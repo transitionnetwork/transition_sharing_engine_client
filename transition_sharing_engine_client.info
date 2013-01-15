@@ -1,0 +1,11 @@
+name = Transition Sharing Engine Client
+description = Requests feed items from a Sharing Engine
+package = Transition
+dependencies[] = panels
+dependencies[] = ctools
+core = 6.x
+php = 5.2
+
+version = "6.x-1.0-DEV"
+core = "6.x"
+

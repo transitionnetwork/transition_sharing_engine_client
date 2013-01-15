@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * Implementation of hook_menu().
+ */
+function transition_sharing_engine_client_menu() {
+  $items = array();
+
+  $items['admin/settings/transition-sharing-engine-client'] = array(
+    'title' => t('Sharing Engine Client'),
+    'description' => 'Settings for the Transition Sharing Engine Client',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('transition_sharing_engine_admin_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'transition_sharing_engine_menu.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+/* $items['tolley-cpd/ajax/change-cpd-entry-type'] = array(
+    'page callback' => 'tolley_cpd_toggle_cpd_entry_type_ajax',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );*/
+  return $items;
+}
+
+
+/**
+* Implementation of hook_ctools_plugin_directory().
+*/
+function transition_sharing_engine_client_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'ctools') {
+    return 'plugins/' . $plugin;
+  }
+}
+
+function transition_sharing_engine_client_render_items($feed_items, $results_render_style, $header = '') {
+  $output .= '<div class="sharing-engine-results">';
+  if ($header && strlen($header) > 4) $output .= '<div class="sharing-engine-results-header">' . $header . '</div>';
+  if (!$feed_items['feed_items']) return $output .= '<p>No stories found</p></div>';
+  if (!$feed_items['feed_items'][0]['item']) {
+    $output .= '<p>' . t('No stories found.') . '</p>';
+    return $output . '</div>';
+  }
+  if ($results_render_style <> 'snippet') $output .= '<ul>';
+  
+  foreach($feed_items['feed_items'] as $key => $item) {
+    $item = $item['item'];
+    if ($results_render_style == 'snippet') {
+      $output .= '<div class="node-teaser feed-item">';
+      $output .= '<h3 class="title">';
+      $output .= '<a href="' . $item['item_url'] . '" title="Read the rest of \'' . $item['item_title'] . '\'." target="_blank">' .  $item['item_title'] . '</a>';
+      $output .= '</h3>';
+      $output .= '<div class="meta"><div class="submitted">';
+      $output .= 'Published on ' . format_date(strtotime($item['item_timestamp'])) . ' by <a href="' . $item['source_directory_url'] . '">' . $item['source_title'] . '</a>';
+      $output .= '</div></div>';
+      $output .= '<div class="content"><p class="feed-item-snippet">' . $item['item_snippet'] . '</p></div>';
+      $output .= '<ul class="links inline" role="navigation">';
+      $output .= '  <li class="node_read_more"><a href="' . $item['item_url'] . '" title="Read the rest of ' . $item['item_title'] . '" target="_blank">Read more</a> at the ' . $item['source_title'] . ' website</li>';
+      $output .= '</ul>';
+      $output .= '</div>';
+    }
+    else { // anything else is 'headlines' - i.e. a ul of headline links
+      $output .= '<li class="feed-item">' . l($item['item_title'], $item['item_url'], array('attributes' => array('target' => '_blank')));
+      if ($results_render_style == 'headlines_source') $output .= ' <span class="source">(<a href="' . $item['source_directory_url'] . '">' . $item['source_title'] . '</a>)</span>';
+      $output .= '</il>';
+    }
+  }
+  $output .= '</div>';
+  if ($results_render_style <> 'snippet') $output .= '</ul>';
+
+  return $output;
+}
+
+/**
+ * Returns the URL on the registered Sharing Engine for the query parameters.
+ *
+ * @params $conf
+ *   An array of query criteria to be converted into a URL
+ *   - $conf['search_type'] tids of Entities represented, + separated, or 'all'
+ *   - $conf['latlong_query'] in format (decimal) latitude,longitude_search radius (miles), or 'all'
+ *   - $conf['items_per_page'] the number of results to return
+ *
+ * @ params $page
+ *   The page number required.
+ */
+function transition_sharing_engine_client_service_query_url($conf, $page = 0, $type = 'json') {
+  // get base of path, return if not set.
+  $request_url = variable_get('transition_sharing_engine_server_url', '');
+  if ($request_url == '') return '';
+
+  // get path to the query/view being called using correct content type
+  $query = '/query/entity_ids-location/' . $type;
+  $request_url .= $query;
+
+  // add tids of Entities represented, lat/long and items per page
+  $request_url .= '/' . $conf['search_type'];
+  $request_url .= '/' . $conf['latlong_query'];
+  $request_url .= '/' . $conf['items_per_page'];
+
+  // add pager handling
+  if ($page) $request_url .= '?page=' . $page;
+
+  return $request_url;
+}
+
+// TODO: variables to delete on uninstall: transition_sharing_engine_server_url
